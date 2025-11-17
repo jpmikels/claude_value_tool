@@ -12,8 +12,6 @@ COPY package*.json ./
 
 # Install ALL dependencies
 RUN npm install --no-audit --no-fund
-
-# Copy source code
 COPY . .
 
 # Build argument for API URL
@@ -30,13 +28,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 
-# Copy from builder
+# Copy public folder only if it exists
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-
-# Copy public folder only if it exists
-RUN mkdir -p ./public
-COPY --from=builder /app/public ./public 2>/dev/null || true
 
 EXPOSE 3000
 
