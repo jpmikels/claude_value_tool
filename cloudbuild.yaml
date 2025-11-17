@@ -28,7 +28,10 @@ steps:
       - -c
       - |
         set -euo pipefail
-        BACKEND_URL="$(gcloud run services describe ${_BACKEND_SERVICE} --region ${_REGION} --format='value(status.url)' || true)"
+        BACKEND_URL="$(gcloud run services describe ${_BACKEND_SERVICE} --region ${_REGION} --project=${_PROJECT} --format='value(status.url)' || true)"
+        if [ -z "$BACKEND_URL" ]; then
+          BACKEND_URL="https://${_BACKEND_SERVICE}-placeholder.run.app"
+        fi
         echo "Using backend URL: ${BACKEND_URL}"
         docker build \
           -t "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA" \
