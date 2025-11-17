@@ -12,6 +12,13 @@ options:
   logging: CLOUD_LOGGING_ONLY
   substitution_option: 'ALLOW_LOOSE'
 steps:
+  # Configure docker auth
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - auth
+      - configure-docker
+      - ${_REGION}-docker.pkg.dev
+      - --quiet
   # Build backend
   - name: gcr.io/cloud-builders/docker
     args:
@@ -21,7 +28,7 @@ steps:
       - "-f"
       - "${_BACKEND_DIR}/Dockerfile"
       - "${_BACKEND_DIR}"
-  # Build frontend with hardcoded placeholder
+  # Build frontend
   - name: gcr.io/cloud-builders/docker
     args:
       - build
@@ -33,22 +40,16 @@ steps:
       - "NEXT_PUBLIC_API_URL=https://vwb-backend-placeholder.run.app"
       - "${_FRONTEND_DIR}"
   # Push backend
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: bash
+  - name: gcr.io/cloud-builders/docker
     args:
-      - '-c'
-      - |
-        gcloud auth configure-docker ${_REGION}-docker.pkg.dev --quiet
-        docker push ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA
+      - push
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
   # Push frontend
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: bash
+  - name: gcr.io/cloud-builders/docker
     args:
-      - '-c'
-      - |
-        gcloud auth configure-docker ${_REGION}-docker.pkg.dev --quiet
-        docker push ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA
-  # Deploy backend first
+      - push
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+  # Deploy backend
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
