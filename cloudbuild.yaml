@@ -8,26 +8,24 @@ substitutions:
   _BACKEND_SERVICE: "vwb-backend"
   _FRONTEND_SERVICE: "vwb-frontend"
   _RUNTIME_SA: "vwb-runner@my-valuation-app-2024.iam.gserviceaccount.com"
-
 serviceAccount: 'projects/my-valuation-app-2024/serviceAccounts/cloudbuild-custom@my-valuation-app-2024.iam.gserviceaccount.com'
-
 options:
   logging: CLOUD_LOGGING_ONLY
   substitution_option: 'ALLOW_LOOSE'
 steps:
-  # Configure docker auth
+  # Configure docker auth for GCR
   - name: gcr.io/cloud-builders/gcloud
     args:
       - auth
       - configure-docker
-      - ${_REGION}-docker.pkg.dev
+      - gcr.io
       - --quiet
   # Build backend
   - name: gcr.io/cloud-builders/docker
     args:
       - build
       - "-t"
-      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
+      - "gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
       - "-f"
       - "${_BACKEND_DIR}/Dockerfile"
       - "${_BACKEND_DIR}"
@@ -36,7 +34,7 @@ steps:
     args:
       - build
       - "-t"
-      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+      - "gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
       - "-f"
       - "${_FRONTEND_DIR}/Dockerfile"
       - "--build-arg"
@@ -46,12 +44,12 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
+      - "gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
   # Push frontend
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+      - "gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
   # Deploy backend
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -59,7 +57,7 @@ steps:
       - run
       - deploy
       - ${_BACKEND_SERVICE}
-      - "--image=${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
+      - "--image=gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
       - "--region=${_REGION}"
       - "--platform=managed"
       - "--allow-unauthenticated"
@@ -76,7 +74,7 @@ steps:
       - run
       - deploy
       - ${_FRONTEND_SERVICE}
-      - "--image=${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+      - "--image=gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
       - "--region=${_REGION}"
       - "--platform=managed"
       - "--allow-unauthenticated"
@@ -85,5 +83,5 @@ steps:
       - "--max-instances=10"
       - "--service-account=${_RUNTIME_SA}"
 images:
-  - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
-  - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+  - "gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
+  - "gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
