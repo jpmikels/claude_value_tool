@@ -10,7 +10,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies needed for build)
+# Install ALL dependencies
 RUN npm install --no-audit --no-fund
 
 # Copy source code
@@ -33,9 +33,11 @@ ENV HOST=0.0.0.0
 # Copy from builder
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 
-# Expose port (Cloud Run will use $PORT env var)
+# Copy public folder only if it exists
+RUN mkdir -p ./public
+COPY --from=builder /app/public ./public 2>/dev/null || true
+
 EXPOSE 3000
 
 CMD ["node", "server.js"]
