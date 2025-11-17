@@ -1,7 +1,7 @@
 # cloudbuild.yaml
 substitutions:
   _REGION: "us-central1"
-  _REPO: "vwb"
+  _REPO: "vwb-test"
   _PROJECT: "my-valuation-app-2024"
   _BACKEND_DIR: "app/backend"
   _FRONTEND_DIR: "app/frontend"
