@@ -8,7 +8,7 @@ substitutions:
   _BACKEND_SERVICE: "vwb-backend"
   _FRONTEND_SERVICE: "vwb-frontend"
   _RUNTIME_SA: "vwb-runner@my-valuation-app-2024.iam.gserviceaccount.com"
-
+serviceAccount: 'projects/my-valuation-app-2024/serviceAccounts/1037752173993-compute@developer.gserviceaccount.com'
 options:
   logging: CLOUD_LOGGING_ONLY
   substitution_option: 'ALLOW_LOOSE'
