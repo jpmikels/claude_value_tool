@@ -1,10 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  // Make the value compile-time from env; no localhost default in prod builds
+  
+  // Optional: Configure environment variables
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '', // leave empty if not provided
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
   },
-};
+  
+  // Optional: Disable TypeScript/ESLint errors blocking build (for development)
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
