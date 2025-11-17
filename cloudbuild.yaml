@@ -13,19 +13,19 @@ options:
   logging: CLOUD_LOGGING_ONLY
   substitution_option: 'ALLOW_LOOSE'
 steps:
-  # Configure docker auth for GCR
+  # Configure docker auth for Artifact Registry
   - name: gcr.io/cloud-builders/gcloud
     args:
       - auth
       - configure-docker
-      - gcr.io
+      - ${_REGION}-docker.pkg.dev
       - --quiet
   # Build backend
   - name: gcr.io/cloud-builders/docker
     args:
       - build
       - "-t"
-      - "gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
       - "-f"
       - "${_BACKEND_DIR}/Dockerfile"
       - "${_BACKEND_DIR}"
@@ -34,7 +34,7 @@ steps:
     args:
       - build
       - "-t"
-      - "gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
       - "-f"
       - "${_FRONTEND_DIR}/Dockerfile"
       - "--build-arg"
@@ -44,12 +44,12 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - "gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
   # Push frontend
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - "gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
   # Deploy backend
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -57,7 +57,7 @@ steps:
       - run
       - deploy
       - ${_BACKEND_SERVICE}
-      - "--image=gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
+      - "--image=${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
       - "--region=${_REGION}"
       - "--platform=managed"
       - "--allow-unauthenticated"
@@ -74,7 +74,7 @@ steps:
       - run
       - deploy
       - ${_FRONTEND_SERVICE}
-      - "--image=gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+      - "--image=${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
       - "--region=${_REGION}"
       - "--platform=managed"
       - "--allow-unauthenticated"
@@ -83,5 +83,5 @@ steps:
       - "--max-instances=10"
       - "--service-account=${_RUNTIME_SA}"
 images:
-  - "gcr.io/${_PROJECT}/${_BACKEND_SERVICE}:$SHORT_SHA"
-  - "gcr.io/${_PROJECT}/${_FRONTEND_SERVICE}:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_BACKEND_SERVICE}:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_FRONTEND_SERVICE}:$SHORT_SHA"
