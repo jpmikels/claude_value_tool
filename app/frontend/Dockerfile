@@ -3,26 +3,28 @@ FROM node:20-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
-# ---------- Install deps ----------
-FROM base AS deps
-COPY package*.json ./
-RUN npm ci --only=production --no-audit --no-fund
-
-# ---------- Build ----------
+# ---------- Build stage ----------
 FROM base AS builder
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm ci --no-audit --no-fund
+
+# Install ALL dependencies (including devDependencies needed for build)
+RUN npm install --no-audit --no-fund
+
+# Copy source code
 COPY . .
 
 # Build argument for API URL
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Build the application
 RUN npm run build
 
-# ---------- Production ----------
-FROM gcr.io/distroless/nodejs20-debian12
+# ---------- Production stage ----------
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -33,4 +35,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-CMD ["server.js"]
+# Expose port (Cloud Run will use $PORT env var)
+EXPOSE 3000
+
+CMD ["node", "server.js"]
