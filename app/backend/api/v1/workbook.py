@@ -11,7 +11,7 @@ from google.cloud import storage
 
 from database import get_db
 from config import settings
-from workbook.generator import ValuationWorkbookGenerator
+from workbook.generator import WorkbookGenerator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -56,7 +56,7 @@ async def generate_workbook(
         # Generate workbook
         logger.info(f"Generating {request.format} workbook for engagement {engagement_id}")
         
-        generator = ValuationWorkbookGenerator(engagement_data)
+        generator = WorkbookGenerator(engagement_data)
         workbook_bytes = generator.generate()
         
         # Upload to Cloud Storage

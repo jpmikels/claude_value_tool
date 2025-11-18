@@ -12,6 +12,8 @@ from schemas.documents import (
 )
 from auth.dependencies import get_current_user
 from config import settings
+from google.oauth2 import service_account
+import json
 
 router = APIRouter()
 
@@ -67,11 +69,32 @@ async def get_upload_url(
     bucket = storage_client.bucket(settings.uploads_bucket)
     blob = bucket.blob(gcs_path)
     
+    # Get service account credentials from environment or default
+    try:
+        # Try to use service account key from Secret Manager or file
+        import os
+        sa_key_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '/secrets/sa-key.json')
+        if os.path.exists(sa_key_path):
+            credentials = service_account.Credentials.from_service_account_file(sa_key_path)
+        else:
+            # Fallback to default credentials with signing
+            from google.auth import default, impersonated_credentials
+            source_credentials, _ = default()
+            credentials = impersonated_credentials.Credentials(
+                source_credentials=source_credentials,
+                target_principal='vwb-runner@my-valuation-app-2024.iam.gserviceaccount.com',
+                target_scopes=['https://www.googleapis.com/auth/cloud-platform'],
+            )
+    except Exception as e:
+        print(f"Warning: Could not load signing credentials: {e}")
+        credentials = None
+    
     signed_url = blob.generate_signed_url(
         version="v4",
         expiration=timedelta(hours=1),
         method="PUT",
-        content_type=request.mime_type
+        content_type=request.mime_type,
+        credentials=credentials
     )
     
     return {

@@ -2,21 +2,30 @@
 import logging
 import json
 from typing import Dict, Any, List
-from google.cloud import aiplatform
-from vertexai.generative_models import GenerativeModel, Part
-
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-aiplatform.init(project=settings.project_id, location=settings.vertex_ai_location)
+# Make Vertex AI imports optional
+try:
+    from google.cloud import aiplatform
+    from vertexai.generative_models import GenerativeModel, Part
+    VERTEXAI_AVAILABLE = True
+    aiplatform.init(project=settings.project_id, location=settings.vertex_ai_location)
+except ImportError as e:
+    logger.warning(f"Vertex AI not available: {e}. Mapper will run in mock mode.")
+    VERTEXAI_AVAILABLE = False
+    GenerativeModel = None
 
 
 class VertexAIMapper:
     """Use Vertex AI to map financial line items to canonical chart of accounts."""
     
     def __init__(self):
-        self.model = GenerativeModel(settings.vertex_ai_model)
+        if VERTEXAI_AVAILABLE:
+            self.model = GenerativeModel(settings.vertex_ai_model)
+        else:
+            self.model = None
     
     def map_line_items(
         self,
@@ -24,41 +33,30 @@ class VertexAIMapper:
         canonical_coa: List[Dict[str, str]],
         statement_type: str
     ) -> List[Dict[str, Any]]:
-        """
-        Map extracted line items to canonical COA using AI.
+        """Map extracted line items to canonical COA using AI."""
+        if self.model is None:
+            logger.warning("Vertex AI not available, returning unmapped items")
+            return self._create_default_mappings(line_items)
         
-        Args:
-            line_items: List of line item labels from source document
-            canonical_coa: Canonical chart of accounts with aliases
-            statement_type: Type of statement (income_statement, balance_sheet, etc.)
-            
-        Returns:
-            List of mappings with confidence scores
-        """
         logger.info(f"Mapping {len(line_items)} line items using Vertex AI")
         
         try:
-            # Build prompt
             prompt = self._build_mapping_prompt(line_items, canonical_coa, statement_type)
             
-            # Call Vertex AI
             response = self.model.generate_content(
                 prompt,
                 generation_config={
-                    "temperature": 0.1,  # Low temperature for consistent mapping
+                    "temperature": 0.1,
                     "top_p": 0.95,
                     "max_output_tokens": 2048,
                 }
             )
             
-            # Parse response
             mappings = self._parse_mapping_response(response.text, line_items)
-            
             return mappings
             
         except Exception as e:
             logger.error(f"Error mapping line items with Vertex AI: {str(e)}")
-            # Return unmapped items
             return [
                 {
                     "source_label": item,
@@ -77,8 +75,6 @@ class VertexAIMapper:
         statement_type: str
     ) -> str:
         """Build prompt for COA mapping."""
-        
-        # Sample canonical COA items for context
         coa_sample = canonical_coa[:50] if len(canonical_coa) > 50 else canonical_coa
         coa_text = "\n".join([f"- {item['code']}: {item['label']} (aliases: {item.get('aliases', 'N/A')})" for item in coa_sample])
         
@@ -116,10 +112,7 @@ Return ONLY the JSON array, no additional text."""
     def _parse_mapping_response(self, response_text: str, line_items: List[str]) -> List[Dict[str, Any]]:
         """Parse AI response into structured mappings."""
         try:
-            # Extract JSON from response
             response_text = response_text.strip()
-            
-            # Find JSON array in response
             start_idx = response_text.find('[')
             end_idx = response_text.rfind(']') + 1
             
@@ -149,16 +142,11 @@ Return ONLY the JSON array, no additional text."""
         ]
     
     def detect_missing_fields(self, parsed_data: Dict[str, Any], statement_type: str) -> List[Dict[str, Any]]:
-        """
-        Use AI to detect missing or inconsistent fields in financial data.
+        """Use AI to detect missing or inconsistent fields in financial data."""
+        if self.model is None:
+            logger.warning("Vertex AI not available, skipping field detection")
+            return []
         
-        Args:
-            parsed_data: Parsed financial statement data
-            statement_type: Type of statement
-            
-        Returns:
-            List of detected issues with suggestions
-        """
         logger.info(f"Detecting missing fields in {statement_type}")
         
         try:
@@ -168,7 +156,7 @@ Return ONLY the JSON array, no additional text."""
 3. Fields that should exist but don't
 
 Parsed Data:
-{json.dumps(parsed_data, indent=2)[:2000]}  # Limit size
+{json.dumps(parsed_data, indent=2)[:2000]}
 
 Return a JSON array of issues:
 [
@@ -192,7 +180,6 @@ Return ONLY the JSON array."""
                 }
             )
             
-            # Parse response
             response_text = response.text.strip()
             start_idx = response_text.find('[')
             end_idx = response_text.rfind(']') + 1
@@ -207,4 +194,3 @@ Return ONLY the JSON array."""
         except Exception as e:
             logger.error(f"Error detecting missing fields: {str(e)}")
             return []
-
